@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio-state
+  labels:
+    app: minio-state
+spec:
+  serviceName: minio-state
+  replicas: 4
+  selector:
+    matchLabels:
+      app: minio-state
+  template:
+    metadata:
+      labels:
+        app: minio-state
+    spec:
+      containers:
+        - name: minio
+          env:
+          - name: MINIO_ACCESS_KEY
+            value: "minio"
+          - name: MINIO_SECRET_KEY
+            value: "minio123"
+          image: minio/minio
+          args: 
+          - server
+          - http://minio-state-0.minio-state.default.svc.cluster.local/data
+          - http://minio-state-1.minio-state.default.svc.cluster.local/data
+          - http://minio-state-2.minio-state.default.svc.cluster.local/data
+          - http://minio-state-3.minio-state.default.svc.cluster.local/data
+          ports:
+            - containerPort: 9000
+          volumeMounts:
+            - name: minio
+              mountPath: "/data"
+              readOnly: false
+  volumeClaimTemplates:
+    - metadata:
+        name: minio
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-state
+  labels:
+    app: minio-state
+spec:
+  ports:
+  - port: 9000
+    name: web
+  clusterIP: None
+  selector:
+    app: minio-state
